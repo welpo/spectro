@@ -258,8 +258,6 @@ main (){
     create_spectrogram "$sox_arg" "$f" "$sox_counter" || return
     # Show hash below the URL, for text only/url mode
     if [[ "$check_sha" == "1" && "$text_only" == "1" ]]; then printf "\n[size=1]SHA: $file_sha[/size]\n"; fi
-    # New line if using parallel, otherwise the for loop handles that
-    if [[ "$parallel" = "1" ]]; then printf '%s\n'; fi
   done
 }
 
