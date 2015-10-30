@@ -284,7 +284,7 @@ for f in "$@"; do
   fi
 done
 
-if ! [[ "$valid_input" == "1" ]]; then
+if ! [[ "$valid_input" == "1" && ! "$parallel" = "1" ]]; then
   printf '%s\n' "Invalid input, no allowed files found (MP3, FLAC or WAV)."
   exit 1
 fi
