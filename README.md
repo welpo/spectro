@@ -8,9 +8,9 @@ Or to process specific files: `spectro <file1> <file2> ...`
 The output will look like:
 ```
 [hide=Spectrograms][size=3]
-[url=https://i.imgur.com/A0OHSq9.png]01. Jardin Du Sommeil.flac[/url]
-[url=https://i.imgur.com/R8ALms0.png]02. Chant D'Amour.flac[/url]
-[url=https://i.imgur.com/lelcsnp.png]03. Sur La Nuit Grandissante.flac[/url][/size][/hide]
+[url=https://i.imgur.com/A0OHSq9.png]01 Jardin Du Sommeil.flac[/url]
+[url=https://i.imgur.com/R8ALms0.png]02 Chant D'Amour.flac[/url]
+[url=https://i.imgur.com/lelcsnp.png]03 Sur La Nuit Grandissante.flac[/url][/size][/hide]
 ```
 
 
