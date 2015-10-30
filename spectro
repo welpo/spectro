@@ -192,7 +192,7 @@ create_spectrogram () {
     title="${title} (SHA $file_sha)"
   fi
   # Create the spectrogram
-  sox "$f" $sox_arg -t "$title" -o "$output_name"
+  sox "$f" $sox_arg -t "$title" -o "$output_name" || return
   if [[ "$optipng" == "1" ]]; then optipng -quiet "$output_name"; fi
   # If using local/offline mode, this is the last step
   if [[ "$offline" == "1" ]]; then
@@ -241,7 +241,11 @@ main (){
   content="$(file --mime-type "$f")"
   content="${content##* }"
   # Ignore files that aren't mp3, flac or wav
-  if ! [[ "${content##* }" == *@(flac|mpeg|wav)* ]]; then
+  if [[ "${content##* }" == *@(flac|mpeg|wav)* ]]; then
+    # Set a variable to print the BBCode only once, and print it
+    valid_input=1
+    if [[ ! "$parallel" == "1" && ! "$valid_input" == "1" ]]; then printf "[hide=Spectrograms]$align_in[size=3]"; fi
+  else
     return
   fi
   # Print name
@@ -261,19 +265,6 @@ main (){
   done
 }
 
-# Check there is _at least_ one valid input (i.e. it exists), otherwise exit (avoids priting the first BBCode lines when it failed)
-for f in "$@"; do
-  if [[ -e "$f" ]]; then
-    break
-  else
-    printf '%s\n' "Invalid input."
-    show_help
-    exit 1
-  fi
-done
-
-if ! [[ "$parallel" == "1" ]]; then printf "[hide=Spectrograms]$align_in[size=3]"; fi
-
 for f in "$@"; do
   if [[ -d "$f" ]]; then
     # Argument is a directory, cd into it and process all the files inside
@@ -288,4 +279,9 @@ for f in "$@"; do
   fi
 done
 
-if ! [[ "$parallel" = "1" ]]; then printf '%s\n' "[/size]$align_out[/hide]"; fi
+if ! [[ "$valid_input" == "1" ]]; then
+  printf '%s\n' "Invalid input, no allowed files found (MP3, FLAC or WAV)."
+  exit 1
+fi
+
+ if [[ ! "$parallel" = "1" ]]; then printf '%s\n' "[/size]$align_out[/hide]"; fi
