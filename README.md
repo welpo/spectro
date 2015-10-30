@@ -50,7 +50,7 @@ You can configure the following options for `spectro` by modifying the first lin
 -h, --help             Show the help output
 -l, --local            Reverse the setting to output the spectrograms locally
 -o, --optipng          Reverse the optipng option set in the script
--p, --parallel         Play nicely with parallel (doesn't ouput the [hide] or [size] tags)
+-p, --parallel         Play nicely with parallel (won't ouput the [hide] or [size] tags)
 -s, --sha              Reverse the check_sha option (to show SHA value)
 -t, --text             Reverse the setting to use [url] tags or [img]
 -z, --zoom             Create only zoomed in screenshot (3 seconds)
