@@ -60,10 +60,10 @@ show_help () {
   printf '%s\n' "    -d, --double    Take both zoomed in and full image for each file"
   printf '%s\n' "    -h, --help      Show this help and exit"
   printf '%s\n' "    -l, --local     Reverse the setting to output the spectrograms locally"
-  printf '%s\n' "    -t, --text      Reverse the setting to use [url] tags or [img]"
   printf '%s\n' "    -o, --optipng   Reverse the optipng option set in the script"
   printf '%s\n' "    -p, --parallel  Play nicely with parallel (example below)"
   printf '%s\n' "    -s, --sha       Reverse the check_sha option (to show SHA value)"
+  printf '%s\n' "    -t, --text      Reverse the setting to use [url] tags or [img]"
   printf '%s\n' "    -z, --zoom      Create only zoomed in screenshot (3 seconds)"
   printf '%s\n'
   printf '%s\n' "Example: spectro -ol DirectoryWithMusic/"
@@ -89,9 +89,6 @@ while :; do
     -l|--local)
       offline=$((!offline))
       ;;
-    -t|--text)
-      text_only=$((!text_only))
-      ;;
     -o|--optipng)
       optipng=$((!optipng))
       ;;
@@ -100,6 +97,9 @@ while :; do
       ;;
     -s|--sha)
       check_sha=$((!check_sha))
+      ;;
+    -t|--text)
+      text_only=$((!text_only))
       ;;
     -z|--zoom)
       zoom=1
@@ -116,10 +116,6 @@ while :; do
             offline=$((!offline))
             continue
           fi
-          if [[ "${1:$i:1}" == "t" ]]; then
-            text_only=$((!text_only))
-            continue
-          fi
           if [[ "${1:$i:1}" == "o" ]]; then
             optipng=$((!optipng))
             continue
@@ -130,6 +126,10 @@ while :; do
           fi
           if [[ "${1:$i:1}" == "s" ]]; then
             check_sha=$((!check_sha))
+            continue
+          fi
+          if [[ "${1:$i:1}" == "t" ]]; then
+            text_only=$((!text_only))
             continue
           fi
           if [[ "${1:$i:1}" == "z" ]]; then
@@ -212,7 +212,7 @@ create_spectrogram () {
     # Check for errors so we can retry
     while [[ "$curl_attempt" -le 3 && "$response" == *"error"* ]]; do
       printf "\rSomething went wrong, trying again. Attempt $curl_attempt out of 3"
-      let curl_attempt=curl_attempt+1
+      ((curl_attempt++))
       sleep 2
       response="$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
         https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )"
@@ -254,7 +254,7 @@ main (){
   if [[ "$check_sha" == "1" && ! "$text_only" == "1" ]]; then printf "[size=1]SHA: $file_sha[/size]"; fi
   sox_counter=0
   for sox_arg in "${sox_arguments[@]}"; do
-    let sox_counter=sox_counter+1
+    ((sox_counter++))
     create_spectrogram "$sox_arg" "$f" "$sox_counter" || return
     # Show hash below the URL, for text only/url mode
     if [[ "$check_sha" == "1" && "$text_only" == "1" ]]; then printf "\n[size=1]SHA: $file_sha[/size]\n"; fi
