@@ -6,7 +6,6 @@ shopt -s globstar
 
 # Check for dependencies
 command -v sox >/dev/null 2>&1 || { printf '%s\n' >&2 "This script requires SoX but it's not installed. Aborting."; exit 1; }
-command -v curl >/dev/null 2>&1 || { printf '%s\n' >&2 "This script requires curl but it's not installed. Aborting."; exit 1; }
 
 ############################# BEGIN CONFIGURATION #############################
 
@@ -53,6 +52,11 @@ fi
 # If optipng is enabled, check that it is on the system, if not, disable it
 if [[ "$optipng" == "1" ]]; then
   command -v optipng >/dev/null 2>&1 || optipng=0
+fi
+
+# Only check for curl dependency when not running in offline/local mode
+if ! [[ "$offline" == "1" ]]; then
+  command -v curl >/dev/null 2>&1 || { printf '%s\n' >&2 "This script requires curl but it's not installed. Aborting."; exit 1; }
 fi
 
 show_help () {
