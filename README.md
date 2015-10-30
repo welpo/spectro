@@ -20,7 +20,7 @@ The output will look like:
 
 Optional:
 
-* Set up the first lines of the script (config) to your likings.
+* Set up the first lines of the script (where the configuration is stored) to your liking.
 
 # Dependencies
 To run `spectro` you will need:
