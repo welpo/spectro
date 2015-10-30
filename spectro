@@ -247,9 +247,9 @@ main (){
   content="${content##* }"
   # Ignore files that aren't mp3, flac or wav
   if [[ "${content##* }" == *@(flac|mpeg|wav)* ]]; then
-    # Set a variable to print the BBCode only once, and print it
-    valid_input=1
+    # Print the first BBCode line and set a variable to avoid repeating it
     if [[ ! "$parallel" == "1" && ! "$valid_input" == "1" ]]; then printf "[hide=Spectrograms]$align_in[size=3]"; fi
+    valid_input=1
   else
     return
   fi
