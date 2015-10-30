@@ -11,7 +11,7 @@ command -v curl >/dev/null 2>&1 || { printf '%s\n' >&2 "This script requires cur
 ############################# BEGIN CONFIGURATION #############################
 
 # Imgur API key. Read about it and register one here: https://api.imgur.com/oauth2
-apikey=
+apikey=f6c67fcc0af0264
 
 # Set offline=1 if you want to create local spectrals by default
 # Can be reversed with the -l, --local flag
