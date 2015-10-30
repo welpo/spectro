@@ -53,8 +53,8 @@ fi
 show_help () {
   printf '%s\n'
   printf '%s\n' "Usage:"
-  printf '%s\n' "    spectro <input>"
-  printf '%s\n' "Input can be individual files (mp3, wav or flac) or a directory."
+  printf '%s\n' "    spectro <input1> <input2> ..."
+  printf '%s\n' "Input can be individual files (MP3, WAV or FLAC) and/or a directories."
   printf '%s\n'
   printf '%s\n' "Options:"
   printf '%s\n' "    -d, --double    Take both zoomed in and full image for each file"
