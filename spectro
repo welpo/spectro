@@ -15,7 +15,7 @@ apikey=
 
 # Set offline=1 if you want to create local spectrals by default
 # Can be reversed with the -l, --local flag
-offline=
+offline=0
 
 # Set optipng=1 if you wish to use it by default
 # Can be reversed with the -o, --optipng flag
@@ -23,7 +23,7 @@ optipng=1
 
 # Set sha_check=1 if you wish to add SHA info to the output (uses shasum)
 # Can be reversed with the -s, --sha flag
-check_sha=1
+check_sha=0
 
 # Set text_only=1 if you wish to display the spectrals as a link, with the filename as clickable source
 # Can be reversed with the -t, --text flag
@@ -48,6 +48,11 @@ fi
 # If SHA is enabled, check that shasum is on the system, if not, disable it
 if [[ "$check_sha" == "1" ]]; then
   command -v shasum >/dev/null 2>&1 || check_sha=0
+fi
+
+# If optipng is enabled, check that it is on the system, if not, disable it
+if [[ "$optipng" == "1" ]]; then
+  command -v optipng >/dev/null 2>&1 || optipng=0
 fi
 
 show_help () {
