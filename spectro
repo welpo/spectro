@@ -71,7 +71,7 @@ show_help () {
   printf '%s\n' "Modify the first lines on the script to modify change the settings"
   printf '%s\n'
   printf '%s\n' "To process a directory with GNU parallel, first cd into it and then run:"
-  printf '%s\n' 'printf "[hide=Spectrograms][size=3]" && ls | parallel -k spectro -p; printf '%s\n' "[/size][/hide]"'
+  printf '%s\n' "printf \"[hide=Spectrograms][size=3]\" && ls | parallel -k spectro -p; printf '%s\n' \"[/size][/hide]\""
   printf '%s\n'
 }
 
