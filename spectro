@@ -38,27 +38,6 @@ urlformat=https://"$(hostname -f)"/"$(whoami)"/spectro
 
 ############################## END CONFIGURATION ##############################
 
-# This will center the text for the title in spectrals if using the [img]spectral[/img] method
-if ! [[ "$text_only" == "1" ]]; then
-  align_in="[align=center]"
-  align_out="[/align]"
-fi
-
-# If SHA is enabled, check that shasum is on the system, if not, disable it
-if [[ "$check_sha" == "1" ]]; then
-  command -v shasum >/dev/null 2>&1 || check_sha=0
-fi
-
-# If optipng is enabled, check that it is on the system, if not, disable it
-if [[ "$optipng" == "1" ]]; then
-  command -v optipng >/dev/null 2>&1 || optipng=0
-fi
-
-# Only check for curl dependency when not running in offline/local mode
-if ! [[ "$offline" == "1" ]]; then
-  command -v curl >/dev/null 2>&1 || { printf '%s\n' >&2 "This script requires curl but it's not installed. Aborting."; exit 1; }
-fi
-
 show_help () {
   printf '%s\n'
   printf '%s\n' "Usage:"
@@ -167,6 +146,27 @@ while :; do
   esac
   shift
 done
+
+# This will center the text for the title in spectrals if using the [img]spectral[/img] method
+if ! [[ "$text_only" == "1" ]]; then
+  align_in="[align=center]"
+  align_out="[/align]"
+fi
+
+# If SHA is enabled, check that shasum is on the system, if not, disable it
+if [[ "$check_sha" == "1" ]]; then
+  command -v shasum >/dev/null 2>&1 || check_sha=0
+fi
+
+# If optipng is enabled, check that it is on the system, if not, disable it
+if [[ "$optipng" == "1" ]]; then
+  command -v optipng >/dev/null 2>&1 || optipng=0
+fi
+
+# Only check for curl dependency when not running in offline/local mode
+if ! [[ "$offline" == "1" ]]; then
+  command -v curl >/dev/null 2>&1 || { printf '%s\n' >&2 "This script requires curl but it's not installed. Aborting."; exit 1; }
+fi
 
 if [[ "$offline" == "1" ]]; then
   mkdir -p "$localdir"
