@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# use mktemp instead of editing the directory?
 trap 'exit' ERR
 shopt -s nullglob
 shopt -s extglob
@@ -207,12 +208,12 @@ create_spectrogram () {
   if [[ "$offline" == "1" ]]; then
     url="$urlformat"/"${output_name##*/}"
     if [[ "$text_only" == "1" ]]; then
-      printf "\r[url=$url]${f}[/url]"
+      printf "\r[url=$url]${f}[/url]\n"
     else
-      printf "\r[img]$url[/img]\n\n"
+      printf "\r[img]$url[/img]\n"
     fi
   else
-    printf "\r\nUploading $output_name to imgur"
+    printf "\rUploading $output_name to imgur"
     # Upload to imgur and replace http for https in the output
     response="$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
       https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )"
@@ -238,9 +239,12 @@ create_spectrogram () {
     # Delete spectrogram image
     rm "$output_name"
     if [[ "$text_only" == "1" ]]; then
-      printf "\r[url=$url]${f}[/url]"
+      # tput to clear until end of line
+      printf "\r$(tput el)[url=$url]${f}[/url]\n"
+      # Show hash below the URL, for text only/url mode
+      if [[ "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
     else
-      printf "\r[img]$url[/img]\n\n"
+      printf "\r$(tput el)[img]$url[/img]\n"
     fi
   fi
 }
@@ -257,20 +261,18 @@ main (){
   else
     return
   fi
+  # New line before each file
+  printf '%s\n'
   # Print name
-  if ! [[ "$text_only" == "1" ]]; then
-    printf '%s\n' "$f"
-  fi
+  if ! [[ "$text_only" == "1" ]]; then printf '%s\n' "$f"; fi
   # Only check hash if set as option. Store it for later use (as sox title & plaintext)
   if [[ "$check_sha" == "1" ]]; then file_sha="$(shasum "$f" | cut -d " " -f 1)"; fi
   # Show hash below name if using images (not text only)
-  if [[ "$check_sha" == "1" && ! "$text_only" == "1" ]]; then printf "[size=1]SHA: $file_sha[/size]"; fi
+  if [[ "$check_sha" == "1" && ! "$text_only" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
   sox_counter=0
   for sox_arg in "${sox_arguments[@]}"; do
     ((sox_counter++))
     create_spectrogram "$sox_arg" "$f" "$sox_counter" || return
-    # Show hash below the URL, for text only/url mode
-    if [[ "$check_sha" == "1" && "$text_only" == "1" ]]; then printf "\n[size=1]SHA: $file_sha[/size]\n"; fi
   done
 }
 
@@ -289,7 +291,7 @@ for f in "$@"; do
 done
 
 if [[ ! "$valid_input" == "1" && ! "$parallel" = "1" ]]; then
-  printf '%s\n' "Invalid input, no allowed files found (MP3, FLAC or WAV)."
+  printf '%s\n' 'Invalid input, no allowed files found (MP3, FLAC or WAV).'
   exit 1
 fi
 
