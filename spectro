@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# use mktemp instead of editing the directory?
 trap 'exit' ERR
 shopt -s nullglob
 shopt -s extglob
 shopt -s globstar
 
-# Check for dependencies
+# Check for sox
 command -v sox >/dev/null 2>&1 || { printf '%s\n' >&2 "This script requires SoX but it's not installed. Aborting."; exit 1; }
 
 ############################# BEGIN CONFIGURATION #############################
@@ -66,6 +65,7 @@ show_help () {
 
 sox_arguments=("-n remix 1 spectrogram -x 3000 -y 513 -z 120 -w Kaiser")
 
+# Check arguments/options
 while :; do
   case $1 in
     -d|--double)
@@ -187,18 +187,29 @@ create_spectrogram () {
   f="${2}"
   # If it's the second time we run sox or -z was used, we want the zoomed version
   if [[ "$3" == "2" || "$zoom" == 1 ]]; then
-    zoom_text="_zoom"
+    if [[ "$offline" == "1" ]]; then
+      # We will append this to the spectrogram filename
+      zoom_filename='_zoom'
+    fi
+    zoom_url_text=' (Zoomed)'
+  else
+    # Set empty variables for multiple runs
+    zoom_filename=''
+    zoom_url_text=''
   fi
-  # Spectrogram name: Replace invalid characters for underscore, add "zoom" if necessary and append "spectro.png"
-  output_name="$(printf '%s\n' "$2" | tr ";, " "_")_spectro${zoom_text}.png"
-  # Use localdir if we want local files
   if [[ "$offline" == "1" ]]; then
+    # Spectrogram name: Replace invalid characters for underscore, add "zoom" and append "spectro.png"
+    output_name="$(printf '%s\n' "$2" | tr ";, " "_")_spectro${zoom_filename}.png"
     output_name="$localdir"/"$output_name"
+    url="$urlformat"/"${output_name##*/}"
+  else
+    # Use temporary file as output, to avoid changing the last modified date on the directory and allow parallel runs on the same directory
+    output_name="$(mktemp)"
   fi
   # Set title (directory name + filename)
   title="${PWD##*/}/${f}"
   # Add SHA info if not using zoom (won't fit) and enabled
-  if [[ "$check_sha" == "1" && -z "$zoom_text" ]]; then
+  if [[ "$check_sha" == "1" && -z "$zoom_url_text" ]]; then
     title="${title} (SHA $file_sha)"
   fi
   # Create the spectrogram
@@ -206,14 +217,13 @@ create_spectrogram () {
   if [[ "$optipng" == "1" ]]; then optipng -quiet "$output_name"; fi
   # If using local/offline mode, this is the last step
   if [[ "$offline" == "1" ]]; then
-    url="$urlformat"/"${output_name##*/}"
     if [[ "$text_only" == "1" ]]; then
-      printf "\r[url=$url]${f}[/url]\n"
+      printf "\r[url=$url]${f}$zoom_url_text[/url]\n"
     else
       printf "\r[img]$url[/img]\n"
     fi
   else
-    printf "\rUploading $output_name to imgur"
+    printf "\rUploading ${f}$zoom_url_text to imgur..."
     # Upload to imgur and replace http for https in the output
     response="$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
       https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )"
@@ -240,12 +250,12 @@ create_spectrogram () {
     rm "$output_name"
     if [[ "$text_only" == "1" ]]; then
       # tput to clear until end of line
-      printf "\r$(tput el)[url=$url]${f}[/url]\n"
-      # Show hash below the URL, for text only/url mode
-      if [[ "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
+      printf "\r$(tput el)[url=$url]${f}$zoom_url_text[/url]\n"
     else
       printf "\r$(tput el)[img]$url[/img]\n"
     fi
+    # Show hash below the URL, for text only/url mode
+    if [[ "$text_only" == "1" && "$check_sha" == "1" && -n "$zoom_url_text" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
   fi
 }
 
