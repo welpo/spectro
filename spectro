@@ -254,8 +254,6 @@ create_spectrogram () {
     else
       printf "\r$(tput el)[img]$url[/img]\n"
     fi
-    # Show hash below the URL, for text only/url mode
-    if [[ "$text_only" == "1" && "$check_sha" == "1" && -n "$zoom_url_text" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
   fi
 }
 
@@ -284,6 +282,8 @@ main (){
     ((sox_counter++))
     create_spectrogram "$sox_arg" "$f" "$sox_counter" || return
   done
+  # Show hash below the URL, for text only/url mode
+  if [[ "$text_only" == "1" && "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
 }
 
 for f in "$@"; do
