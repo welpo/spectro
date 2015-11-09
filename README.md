@@ -25,7 +25,7 @@ Optional:
 # Dependencies
 To run `spectro` you will need:
 
-- `sox` which creates the spectrograms (with MP3 support if you want to use `spectro` such files).
+- `sox` which creates the spectrograms (with MP3 support if you want to use `spectro` with such files).
 - `curl` to upload the images to imgur (not necessary if only used locally).
 
 Optional dependencies:
