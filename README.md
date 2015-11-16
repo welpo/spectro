@@ -25,12 +25,12 @@ Optional:
 # Dependencies
 To run `spectro` you will need:
 
-- `sox` which creates the spectrograms (with MP3 support if you want to use `spectro` with such files).
+- `sox` which creates the spectrograms (with MP3 support if you want to use `spectro` with such files): http://sox.sourceforge.net
 - `curl` to upload the images to imgur (not necessary if only used locally).
 
 Optional dependencies:
 
-- `optipng` to optimise the spectrograms. Necessary more often than not to avoid imgur transcoding the images to `.jpg`.
+- `optipng` to optimise the spectrograms. Necessary more often than not to avoid imgur transcoding the images to `.jpg`: http://optipng.sourceforge.net
 - `shasum` to include the file SHA on the output BBCode output as well as `sox`'s spectrogram title.
 
 # Configuration
