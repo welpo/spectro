@@ -95,6 +95,7 @@ while :; do
       sox_arguments=("-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04")
       ;;
     -?*)
+      # Handle grouped options (eg. spectro -lot file)
       if [[ "${#1}" -ge "3" && ${1:1:1} != "-" ]]; then
         for (( i=1; i<${#1}; i++ )); do
           if [[ "${1:$i:1}" == "d" ]]; then
