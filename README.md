@@ -41,7 +41,7 @@ You can configure the following options for `spectro` by modifying the first lin
 * `localdir` Local directory where files will be stored (e.g. your public_html folder).
 * `offline` Create local spectrograms (saved in `localdir`), don't upload to imgur (Default is 0).
 * `optipng` Use optipng on the spectrogram images to save space and avoid imgur compressing them to jpg (Default is 1).
-* `text_only` Set it to 1 if you wish to display the spectrals as a link, with the filename as clickable source (Default is 1). If set to anything other than 1 it will output [img][/img] tags to embed the images.
+* `text_only` Display the spectrograms as a link, with the filename as the clickable link (Default is 1). The alternative is to output [img][/img] tags to embed the images.
 * `urlformat` URL that directs to the directory set in `localdir`.
 
 # Options
