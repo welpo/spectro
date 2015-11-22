@@ -208,7 +208,7 @@ create_spectrogram () {
     output_name="$(mktemp)"
   fi
   # Set title (directory name + filename)
-  title="${PWD##*/}/${f}"
+  title="${PWD##*/}/${file}"
   # Add SHA info if not using zoom (won't fit) and enabled
   if [[ "$check_sha" == "1" && -z "$zoom_url_text" ]]; then
     title="${title} (SHA $file_sha)"
@@ -216,15 +216,9 @@ create_spectrogram () {
   # Create the spectrogram
   sox "$file" $sox_arg -t "$title" -o "$output_name" || return
   if [[ "$optipng" == "1" ]]; then optipng -quiet "$output_name"; fi
-  # If using local/offline mode, this is the last step
-  if [[ "$offline" == "1" ]]; then
-    if [[ "$text_only" == "1" ]]; then
-      printf "\r[url=$url]${f}$zoom_url_text[/url]\n"
-    else
-      printf "\r[img]$url[/img]\n"
-    fi
-  else
-    printf "\rUploading ${f}$zoom_url_text to imgur..."
+  # Upload to imgur and grab the URL if it's not in local mode
+  if ! [[ "$offline" == "1" ]]; then
+    printf "\rUploading ${file}$zoom_url_text to imgur..."
     # Upload to imgur and replace http for https in the output
     response="$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
       https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )"
@@ -249,12 +243,12 @@ create_spectrogram () {
     url="$(printf '%s\n' "$response" | sed -E 's/.*<link>(.*)<\/link>.*/\1/')"
     # Delete spectrogram image
     rm "$output_name"
-    if [[ "$text_only" == "1" ]]; then
-      # tput to clear until end of line
-      printf "\r$(tput el)[url=$url]${f}$zoom_url_text[/url]\n"
-    else
-      printf "\r$(tput el)[img]$url[/img]\n"
-    fi
+  fi
+  if [[ "$text_only" == "1" ]]; then
+    # tput to clear until end of line
+    printf "\r$(tput el)[url=$url]${file}$zoom_url_text[/url]\n"
+  else
+    printf "\r$(tput el)[img]$url[/img]\n"
   fi
 }
 
