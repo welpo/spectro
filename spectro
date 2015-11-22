@@ -185,7 +185,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 create_spectrogram () {
-  f="${2}"
+  file="${2}"
   # If it's the second time we run sox or -z was used, we want the zoomed version
   if [[ "$3" == "2" || "$zoom" == 1 ]]; then
     if [[ "$offline" == "1" ]]; then
@@ -214,7 +214,7 @@ create_spectrogram () {
     title="${title} (SHA $file_sha)"
   fi
   # Create the spectrogram
-  sox "$f" $sox_arg -t "$title" -o "$output_name" || return
+  sox "$file" $sox_arg -t "$title" -o "$output_name" || return
   if [[ "$optipng" == "1" ]]; then optipng -quiet "$output_name"; fi
   # If using local/offline mode, this is the last step
   if [[ "$offline" == "1" ]]; then
@@ -259,8 +259,8 @@ create_spectrogram () {
 }
 
 main (){
-  f="$1"
-  content="$(file --mime-type "$f")"
+  file="$1"
+  content="$(file --mime-type "$file")"
   content="${content##* }"
   # Ignore files that aren't mp3, flac or wav
   if [[ "${content##* }" == *@(flac|mpeg|wav)* ]]; then
@@ -273,31 +273,31 @@ main (){
   # New line before each file
   printf '%s\n'
   # Print name
-  if ! [[ "$text_only" == "1" ]]; then printf '%s\n' "$f"; fi
+  if ! [[ "$text_only" == "1" ]]; then printf '%s\n' "$file"; fi
   # Only check hash if set as option. Store it for later use (as sox title & plaintext)
-  if [[ "$check_sha" == "1" ]]; then file_sha="$(shasum "$f" | cut -d " " -f 1)"; fi
+  if [[ "$check_sha" == "1" ]]; then file_sha="$(shasum "$file" | cut -d " " -f 1)"; fi
   # Show hash below name if using images (not text only)
   if [[ "$check_sha" == "1" && ! "$text_only" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
   sox_counter=0
   for sox_arg in "${sox_arguments[@]}"; do
     ((sox_counter++))
-    create_spectrogram "$sox_arg" "$f" "$sox_counter" || return
+    create_spectrogram "$sox_arg" "$file" "$sox_counter" || return
   done
   # Show hash below the URL, for text only/url mode
   if [[ "$text_only" == "1" && "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
 }
 
-for f in "$@"; do
-  if [[ -d "$f" ]]; then
+for input in "$@"; do
+  if [[ -d "$input" ]]; then
     # Argument is a directory, cd into it and process all the files inside
-    cd "$f"
-    for f in **/*; do
-      main "$f" || continue
+    cd "$input"
+    for file in **/*; do
+      main "$file" || continue
     done
   fi
   # If it's not a directory, process the files by themselves
-  if [[ -f "$f" ]]; then
-    main "$f" || continue
+  if [[ -f "$input" ]]; then
+    main "$input" || continue
   fi
 done
 
