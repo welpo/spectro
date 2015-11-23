@@ -185,9 +185,8 @@ if [ "$#" -lt 1 ]; then
 fi
 
 create_spectrogram () {
-  file="${2}"
   # If it's the second time we run sox or -z was used, we want the zoomed version
-  if [[ "$3" == "2" || "$zoom" == 1 ]]; then
+  if [[ "$sox_counter" == "2" || "$zoom" == 1 ]]; then
     if [[ "$offline" == "1" ]]; then
       # We will append this to the spectrogram filename
       zoom_filename='_zoom'
@@ -253,7 +252,6 @@ create_spectrogram () {
 }
 
 main (){
-  file="$1"
   content="$(file --mime-type "$file")"
   content="${content##* }"
   # Ignore files that aren't mp3, flac or wav
@@ -275,23 +273,23 @@ main (){
   sox_counter=0
   for sox_arg in "${sox_arguments[@]}"; do
     ((sox_counter++))
-    create_spectrogram "$sox_arg" "$file" "$sox_counter" || return
+    create_spectrogram || return
   done
   # Show hash below the URL, for text only/url mode
   if [[ "$text_only" == "1" && "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
 }
 
-for input in "$@"; do
-  if [[ -d "$input" ]]; then
+for file in "$@"; do
+  if [[ -d "$file" ]]; then
     # Argument is a directory, cd into it and process all the files inside
-    cd "$input"
+    cd "$file"
     for file in **/*; do
-      main "$file" || continue
+      main || continue
     done
   fi
   # If it's not a directory, process the files by themselves
-  if [[ -f "$input" ]]; then
-    main "$input" || continue
+  if [[ -f "$file" ]]; then
+    main || continue
   fi
 done
 
