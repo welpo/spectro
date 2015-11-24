@@ -174,10 +174,6 @@ if [[ "$offline" == "1" ]]; then
   mkdir -p "$localdir"
 fi
 
-if [[ "$optipng" == "1" ]]; then
-  command -v optipng >/dev/null 2>&1 || { printf '%s\n' >&2 "You enabled optipng but it's not installed. Aborting."; exit 1; }
-fi
-
 # Check there's at least one argument
 if [ "$#" -lt 1 ]; then
   show_help
