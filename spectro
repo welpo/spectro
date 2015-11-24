@@ -214,7 +214,7 @@ create_spectrogram () {
     title="$title (SHA $file_sha)"
   fi
   # Create the spectrogram
-  sox "$file" $sox_arg -t "$title" -o "$output_name" || return
+  sox "$file" $sox_arg -c 'Created with spectro using SoX' -t "$title" -o "$output_name" || return
   if [[ "$optipng" == "1" ]]; then optipng -quiet "$output_name"; fi
   # Upload to imgur and grab the URL if it's not in local mode
   if ! [[ "$offline" == "1" ]]; then
