@@ -42,7 +42,7 @@ show_help () {
   printf '%s\n'
   printf '%s\n' "Usage:"
   printf '%s\n' "    spectro <input1> <input2> ..."
-  printf '%s\n' "Input can be individual files (MP3, WAV or FLAC) and/or a directories."
+  printf '%s\n' "Input can be individual files (Ogg, MP3, WAV or FLAC) and/or a directories."
   printf '%s\n'
   printf '%s\n' "Options:"
   printf '%s\n' "    -d, --double    Take both zoomed in and full image for each file"
@@ -256,8 +256,8 @@ create_spectrogram () {
 main (){
   content="$(file --mime-type "$file")"
   content="${content##* }"
-  # Ignore files that aren't mp3, flac or wav
-  if [[ "${content##* }" == *@(flac|mpeg|wav)* ]]; then
+  # Ignore files that aren't ogg, mp3, flac or wav
+  if [[ "${content##* }" == *@(flac|mpeg|wav|ogg)* ]]; then
     # Print the first BBCode line and set a variable to avoid repeating it
     if [[ ! "$parallel" == "1" && ! "$valid_input" == "1" ]]; then printf "[hide=Spectrograms]$align_in[size=3]"; fi
     valid_input=1
@@ -298,7 +298,7 @@ for file in "$@"; do
 done
 
 if [[ ! "$valid_input" == "1" && ! "$parallel" = "1" ]]; then
-  printf '%s\n' 'Invalid input, no allowed files found (MP3, FLAC or WAV).'
+  printf '%s\n' 'Invalid input, no allowed files found (Ogg, MP3, FLAC or WAV).'
   exit 1
 fi
 

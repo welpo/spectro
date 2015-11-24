@@ -1,5 +1,5 @@
 # About
-`spectro` is a bash script which provides BBCode formatted text with the spectrograms of audio files (MP3, FLAC and WAV).
+`spectro` is a bash script which provides BBCode formatted text with the spectrograms of audio files (Ogg, MP3, FLAC and WAV).
 
 To process an entire directory: `spectro Path/To/Directory/`
 
