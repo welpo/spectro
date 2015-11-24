@@ -195,7 +195,7 @@ create_spectrogram () {
   fi
   if [[ "$offline" == "1" ]]; then
     # Spectrogram name: Replace invalid characters for underscore, add "zoom" and append "spectro.png"
-    output_name="$(printf '%s\n' "$2" | tr ";, " "_")_spectro${zoom_filename}.png"
+    output_name="$(printf '%s\n' "$file_basename" | tr ";, " "_")_spectro${zoom_filename}.png"
     output_name="$localdir"/"$output_name"
     url="$urlformat"/"${output_name##*/}"
   else
@@ -203,7 +203,9 @@ create_spectrogram () {
     output_name="$(mktemp)"
   fi
   # Set title (directory name + filename)
-  title="${PWD##*/}/$file"
+  directory="$(dirname "$file")"
+  directory="${directory##*/}"
+  title="$directory/$file_basename"
   # Add SHA info if not using zoom (won't fit) and enabled
   if [[ "$check_sha" == "1" && -z "$zoom_url_text" ]]; then
     title="$title (SHA $file_sha)"
@@ -213,7 +215,7 @@ create_spectrogram () {
   if [[ "$optipng" == "1" ]]; then optipng -quiet "$output_name"; fi
   # Upload to imgur and grab the URL if it's not in local mode
   if ! [[ "$offline" == "1" ]]; then
-    printf "\rUploading $file$zoom_url_text to imgur..."
+    printf "\rUploading $file_basename$zoom_url_text to imgur..."
     # Upload to imgur and replace http for https in the output
     response="$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
       https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )"
@@ -241,7 +243,7 @@ create_spectrogram () {
   fi
   if [[ "$text_only" == "1" ]]; then
     # tput to clear until end of line
-    printf "\r$(tput el)[url=$url]$file$zoom_url_text[/url]\n"
+    printf "\r$(tput el)[url=$url]$file_basename$zoom_url_text[/url]\n"
   else
     printf "\r$(tput el)[img]$url[/img]\n"
   fi
@@ -260,8 +262,10 @@ main (){
   fi
   # New line before each file
   printf '%s\n'
+  # Store basename for later use
+  file_basename="$(basename "$file")"
   # Print name
-  if ! [[ "$text_only" == "1" ]]; then printf '%s\n' "$file"; fi
+  if ! [[ "$text_only" == "1" ]]; then printf '%s\n' "$file_basename"; fi
   # Only check hash if set as option. Store it for later use (as sox title & plaintext)
   if [[ "$check_sha" == "1" ]]; then file_sha="$(shasum "$file" | cut -d " " -f 1)"; fi
   # Show hash below name if using images (not text only)
