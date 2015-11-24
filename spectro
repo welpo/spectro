@@ -243,9 +243,10 @@ create_spectrogram () {
   fi
   if [[ "$text_only" == "1" ]]; then
     # tput to clear until end of line
-    printf "\r$(tput el)[url=$url]$file_basename$zoom_url_text[/url]\n"
+    clear_line="$(tput el)"
+    printf "\r$clear_line[url=$url]$file_basename$zoom_url_text[/url]\n"
   else
-    printf "\r$(tput el)[img]$url[/img]\n"
+    printf "\r$clear_line[img]$url[/img]\n"
   fi
 }
 
