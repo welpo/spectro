@@ -205,6 +205,9 @@ create_spectrogram () {
   # Set title (directory name + filename)
   directory="$(dirname "$file")"
   directory="${directory##*/}"
+  if [[ "$directory" == "." ]]; then
+    directory="${PWD##*/}"
+  fi
   title="$directory/$file_basename"
   # Add SHA info if not using zoom (won't fit) and enabled
   if [[ "$check_sha" == "1" && -z "$zoom_url_text" ]]; then
