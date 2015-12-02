@@ -5,12 +5,16 @@ shopt -s extglob
 shopt -s globstar
 
 # Check for sox
-command -v sox >/dev/null 2>&1 || { printf '%s\n' >&2 "This script requires SoX but it's not installed. Aborting."; exit 1; }
+hash sox 2>/dev/null || { printf '%s\n' >&2 "This script requires SoX but it's not installed. Aborting."; exit 1; }
 
 ############################# BEGIN CONFIGURATION #############################
 
 # Imgur API key. Read about it and register one here: https://api.imgur.com/oauth2
 apikey=f6c67fcc0af0264
+
+# Set sha_check=1 if you wish to add SHA info to the output (uses shasum)
+# Can be reversed with the -s, --sha flag
+check_sha=0
 
 # Set offline=1 if you want to create local spectrals by default
 # Can be reversed with the -l, --local flag
@@ -20,9 +24,10 @@ offline=0
 # Can be reversed with the -o, --optipng flag
 optipng=1
 
-# Set sha_check=1 if you wish to add SHA info to the output (uses shasum)
-# Can be reversed with the -s, --sha flag
-check_sha=0
+# Do not show 'Uploading to imgur...' text
+# Necessary if you want to pipe the output
+# Can be forced by using the -q, --quiet flag
+quiet=
 
 # Set text_only=1 if you wish to display the spectrals as a link, with the filename as clickable source
 # Can be reversed with the -t, --text flag
@@ -30,11 +35,11 @@ text_only=1
 
 # Local directory where files will be stored (should be inside your public_html folder) when using -l, --local:
 # Do NOT use a trailing slash
-localdir="${HOME}"/www/"$(whoami)"."$(hostname -f)"/public_html/spectro
+localdir="$HOME"/www/$(whoami).$(hostname -f)/public_html/spectro
 
-# URL format (example: http://yoursite.com/spectro/) for the -l, --local flag
+# URL format (example: http://yoursite.com/spectro) for the -l, --local flag
 # Do NOT use a trailing slash
-urlformat=https://"$(hostname -f)"/"$(whoami)"/spectro
+urlformat=https://$(hostname -f)/$(whoami)/spectro
 
 ############################## END CONFIGURATION ##############################
 
@@ -42,7 +47,7 @@ show_help () {
   printf '%s\n'
   printf '%s\n' "Usage:"
   printf '%s\n' "    spectro <input1> <input2> ..."
-  printf '%s\n' "Input can be individual files (Ogg, MP3, WAV or FLAC) and/or a directories."
+  printf '%s\n' "Input can be individual files (Ogg, MP3, WAV, AAC, ape, WMA, MP4 or FLAC) and/or a directories."
   printf '%s\n'
   printf '%s\n' "Options:"
   printf '%s\n' "    -d, --double    Take both zoomed in and full image for each file"
@@ -50,6 +55,7 @@ show_help () {
   printf '%s\n' "    -l, --local     Reverse the setting to output the spectrograms locally"
   printf '%s\n' "    -o, --optipng   Reverse the optipng option set in the script"
   printf '%s\n' "    -p, --parallel  Play nicely with parallel (example below)"
+  printf '%s\n' "    -q, --quiet     Don't show 'Uploading' text (necessary if you want to pipe)"
   printf '%s\n' "    -s, --sha       Reverse the check_sha option (to show SHA value)"
   printf '%s\n' "    -t, --text      Reverse the setting to use [url] tags or [img]"
   printf '%s\n' "    -z, --zoom      Create only zoomed in screenshot (3 seconds)"
@@ -84,6 +90,9 @@ while :; do
     -p|--parallel)
       parallel=1
       ;;
+    -q|--quiet)
+      quiet=1
+      ;;
     -s|--sha)
       check_sha=$((!check_sha))
       ;;
@@ -112,6 +121,10 @@ while :; do
           fi
           if [[ "${1:$i:1}" == "p" ]]; then
             parallel=1
+            continue
+          fi
+          if [[ "${1:$i:1}" == "q" ]]; then
+            quiet=1
             continue
           fi
           if [[ "${1:$i:1}" == "s" ]]; then
@@ -150,24 +163,24 @@ while :; do
 done
 
 # This will center the text for the title in spectrals if using the [img]spectral[/img] method
-if ! [[ "$text_only" == "1" ]]; then
+if [[ "$text_only" != "1" ]]; then
   align_in="[align=center]"
   align_out="[/align]"
 fi
 
 # If SHA is enabled, check that shasum is on the system, if not, disable it
 if [[ "$check_sha" == "1" ]]; then
-  command -v shasum >/dev/null 2>&1 || check_sha=0
+  hash shasum 2>/dev/null || check_sha=0
 fi
 
 # If optipng is enabled, check that it is on the system, if not, disable it
 if [[ "$optipng" == "1" ]]; then
-  command -v optipng >/dev/null 2>&1 || optipng=0
+  hash optipng 2>/dev/null || optipng=0
 fi
 
 # Only check for curl dependency when not running in offline/local mode
-if ! [[ "$offline" == "1" ]]; then
-  command -v curl >/dev/null 2>&1 || { printf '%s\n' >&2 "This script requires curl but it's not installed. Aborting."; exit 1; }
+if [[ "$offline" != "1" ]]; then
+  hash curl 2>/dev/null || { printf '%s\n' >&2 "This script requires curl but it's not installed. Aborting."; exit 1; }
 fi
 
 if [[ "$offline" == "1" ]]; then
@@ -193,96 +206,155 @@ create_spectrogram () {
     zoom_filename=''
     zoom_url_text=''
   fi
+
   if [[ "$offline" == "1" ]]; then
     # Spectrogram name: Replace invalid characters for underscore, add "zoom" and append "spectro.png"
-    output_name="$(printf '%s\n' "$file_basename" | tr ";, " "_")_spectro${zoom_filename}.png"
+    output_name=$(printf '%s\n' "$file_basename" | tr ";, " "_")_spectro${zoom_filename}.png
     output_name="$localdir"/"$output_name"
     url="$urlformat"/"${output_name##*/}"
   else
     # Use temporary file as output, to avoid changing the last modified date on the directory and allow parallel runs on the same directory
-    output_name="$(mktemp)"
+    output_name=$(mktemp)
   fi
+
   # Set title (directory name + filename)
-  directory="$(dirname "$file")"
+  directory=$(dirname "$input")
   directory="${directory##*/}"
   if [[ "$directory" == "." ]]; then
     directory="${PWD##*/}"
   fi
+
+  # Set title for SoX
   title="$directory/$file_basename"
   # Add SHA info if not using zoom (won't fit) and enabled
   if [[ "$check_sha" == "1" && -z "$zoom_url_text" ]]; then
     title="$title (SHA $file_sha)"
   fi
+
   # Create the spectrogram
-  sox "$file" $sox_arg -c 'Created with spectro using SoX' -t "$title" -o "$output_name" || return
+  sox "$file" $sox_arg -c "Created with spectro using SoX$converter_text" -t "$title" -o "$output_name" || return
   if [[ "$optipng" == "1" ]]; then optipng -quiet "$output_name"; fi
+
   # Upload to imgur and grab the URL if it's not in local mode
   if ! [[ "$offline" == "1" ]]; then
-    printf "\rUploading $file_basename$zoom_url_text to imgur..."
+    if [[ "$quiet" != "1" ]]; then
+      printf "\rUploading $file_basename$zoom_url_text to imgur..."
+    fi
     # Upload to imgur and replace http for https in the output
-    response="$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
-      https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )"
+    response=$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
+      https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )
     sleep 3
     curl_attempt=2
     # Check for errors so we can retry
     while [[ "$curl_attempt" -le 3 && "$response" == *"error"* ]]; do
-      printf "\rSomething went wrong, trying again. Attempt $curl_attempt out of 3"
+      if [[ "$quiet" != "1" ]]; then
+        printf "\rSomething went wrong, trying again. Attempt $curl_attempt out of 3"
+      fi
       ((curl_attempt++))
       sleep 2
-      response="$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
-        https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )"
+      response=$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
+        https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )
     done
     if [[ "$response" == *"error"* ]]; then
       # Parse the actual error to display it
-      curl_error="$(printf '%s\n' "$response" | sed -E 's/.*<error>(.*)<\/error>.*/\1/')"
+      curl_error=$(printf '%s\n' "$response" | sed -E 's/.*<error>(.*)<\/error>.*/\1/')
       printf "\rCouldn't upload this this image, reason: \"$curl_error\""
       rm "$output_name"
       return
     fi
     # Get the text between <link> </link> in the xml output
-    url="$(printf '%s\n' "$response" | sed -E 's/.*<link>(.*)<\/link>.*/\1/')"
+    url=$(printf '%s\n' "$response" | sed -E 's/.*<link>(.*)<\/link>.*/\1/')
     # Delete spectrogram image
     rm "$output_name"
   fi
+
+  # Display URL with [url] tags
   if [[ "$text_only" == "1" ]]; then
+    if [[ "$quiet" != "1" ]]; then
     # tput to clear until end of line
-    clear_line="$(tput el)"
-    printf "\r$clear_line[url=$url]$file_basename$zoom_url_text[/url]\n"
+      printf "\r$(tput el)[url=$url]$file_basename$zoom_url_text[/url]\n"
+    else
+      printf '%s\n' "[url=$url]$file_basename$zoom_url_text[/url]"
+    fi
   else
-    printf "\r$clear_line[img]$url[/img]\n"
+    # Display URL with [img] tags
+    if [[ "$quiet" != "1" ]]; then
+      printf "\r$(tput el)[img]$url[/img]\n"
+    else
+      printf '%s\n' "[img]$url[/img]"
+    fi
   fi
 }
 
 main (){
-  content="$(file --mime-type "$file")"
+  input="$file"
+  content=$(file --mime-type "$file")
   content="${content##* }"
-  # Ignore files that aren't ogg, mp3, flac or wav
-  if [[ "${content##* }" == *@(flac|mpeg|wav|ogg)* ]]; then
+  # Store basename for later use
+  file_basename=$(basename "$file")
+
+  # Ignore files that aren't ogg, mp3, flac, ape, aac, wav...
+  if [[ "${content##* }" == *@(flac|mpeg|wav|aiff|ogg|m4a|aac|mp4|ape|asf|wma)* ]]; then
     # Print the first BBCode line and set a variable to avoid repeating it
-    if [[ ! "$parallel" == "1" && ! "$valid_input" == "1" ]]; then printf "[hide=Spectrograms]$align_in[size=3]"; fi
+    if [[ "$parallel" != "1" && "$valid_input" != "1" ]]; then printf "[hide=Spectrograms]$align_in[size=3]"; fi
     valid_input=1
   else
     return
   fi
+
+  # Check if the input requires using ffmpeg/avconv
+  if [[ "${content##* }" == *@(m4a|aac|mp4|ape|asf|wma)* ]]; then
+    if [[ -z "$converter" ]]; then
+      if hash ffmpeg 2>/dev/null; then
+        converter=ffmpeg
+      elif hash avconv 2>/dev/null; then
+        converter=avconv
+      else
+        printf '%s\n' "ERROR: This file ($file) can't be processed without ffmpeg or avconv"
+        return
+      fi
+    fi
+    # After we set the converter (or ignore the file, if there's none), create the WAV file
+    wav_output=$(mktemp)
+    converter_text=" and $converter"
+    "$converter" -y -v 0 -i "$file" -f wav "$wav_output"
+  fi
+
+  # Only check hash if set as option. Store it for later use (as sox title & plaintext)
+  if [[ "$check_sha" == "1" ]]; then file_sha=$(shasum "$file" | cut -d " " -f 1); fi
+
   # New line before each file
   printf '%s\n'
-  # Store basename for later use
-  file_basename="$(basename "$file")"
   # Print name
-  if ! [[ "$text_only" == "1" ]]; then printf '%s\n' "$file_basename"; fi
-  # Only check hash if set as option. Store it for later use (as sox title & plaintext)
-  if [[ "$check_sha" == "1" ]]; then file_sha="$(shasum "$file" | cut -d " " -f 1)"; fi
+  if [[ "$text_only" != "1" ]]; then printf '%s\n' "$file_basename"; fi
   # Show hash below name if using images (not text only)
-  if [[ "$check_sha" == "1" && ! "$text_only" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
+  if [[ "$check_sha" == "1" && "$text_only" != "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
   sox_counter=0
+
+  # If we used a WAV file (used ffmpeg or avconv), set that as $file
+  if [[ -n "$wav_output" ]]; then
+    file="$wav_output"
+  fi
+
+  # Call function to create the spectrograms and display the URLs
   for sox_arg in "${sox_arguments[@]}"; do
     ((sox_counter++))
     create_spectrogram || return
   done
+
   # Show hash below the URL, for text only/url mode
   if [[ "$text_only" == "1" && "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
+
+  # Remove the WAV files if they were used
+  if [[ -n "$wav_output" ]]; then
+    rm "$wav_output"
+    # Empty the variables before processing the next file
+    wav_output=''
+    converter_text=''
+  fi
 }
 
+# Process the arguments
 for file in "$@"; do
   if [[ -d "$file" ]]; then
     # Argument is a directory, cd into it and process all the files inside
@@ -297,9 +369,9 @@ for file in "$@"; do
   fi
 done
 
-if [[ ! "$valid_input" == "1" && ! "$parallel" = "1" ]]; then
-  printf '%s\n' 'Invalid input, no allowed files found (Ogg, MP3, FLAC or WAV).'
+if [[ "$valid_input" != "1" && "$parallel" != "1" ]]; then
+  printf '%s\n' 'Invalid input, no allowed files found (Ogg, MP3, FLAC, AAC, ape, WMA, MP4 or WAV).'
   exit 1
 fi
 
- if [[ ! "$parallel" = "1" ]]; then printf '%s\n' "[/size]$align_out[/hide]"; fi
+if [[ "$parallel" != "1" ]]; then printf '%s\n' "[/size]$align_out[/hide]"; fi
