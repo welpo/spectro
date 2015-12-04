@@ -20,7 +20,7 @@ The output will look like:
 * Place `spectro` somewhere in your PATH, like `~/bin`
 * Make it executable: `chmod +x spectro`
 
-Optional:
+**Optional**:
 
 * Set up the first lines of the script (where the configuration is stored) to your liking.
 
@@ -30,11 +30,11 @@ To run `spectro` you will need:
 - `sox` which creates the spectrograms (with MP3 support if you want to use `spectro` with such files): http://sox.sourceforge.net
 - `curl` to upload the images to imgur (not necessary if only used locally).
 
-Optional dependencies:
+**Optional dependencies**:
 
+- `ffmpeg` or `avconv` to process ape, WMA, MP4 and AAC files.
 - `optipng` to optimise the spectrograms. Necessary more often than not to avoid imgur transcoding the images to `.jpg`: http://optipng.sourceforge.net
 - `shasum` to include the file SHA on the output BBCode output as well as `sox`'s spectrogram title.
-- `ffmpeg` or `avconv` to process ape, WMA, MP4 and AAC files.
 
 # Configuration
 You can configure the following options for `spectro` by modifying the first lines on the script using your favourite text editor:
@@ -54,6 +54,7 @@ You can configure the following options for `spectro` by modifying the first lin
 -l, --local            Reverse the setting to output the spectrograms locally
 -o, --optipng          Reverse the optipng option set in the script
 -p, --parallel         Play nicely with parallel (won't ouput the [hide] or [size] tags)
+-q, --quiet            Don't show 'Uploading' text (necessary if you want to pipe)
 -s, --sha              Reverse the check_sha option (to show SHA value)
 -t, --text             Reverse the setting to use [url] tags or [img]
 -z, --zoom             Create only zoomed in screenshot (3 seconds)
