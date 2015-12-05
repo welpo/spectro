@@ -39,13 +39,13 @@ To run `spectro` you will need:
 # Configuration
 You can configure the following options for `spectro` by modifying the first lines on the script using your favourite text editor:
 
-* `apikey` Imgur API key. Default value is the `spectro` public API key. You can change it to use your own (if it ever hits the limits, for example) - you can read about it and register one here: https://api.imgur.com/oauth2.
+* `api_key` Imgur API key. Default value is the `spectro` public API key. You can change it to use your own (if it ever hits the limits, for example) - you can read about it and register one here: https://api.imgur.com/oauth2.
 * `check_sha` Adds the SHA of the file to the BBCode output as well as the title in the `sox` spectrogram (Default is 0).
-* `localdir` Local directory where files will be stored (e.g. your public_html folder).
-* `offline` Create local spectrograms (saved in `localdir`), don't upload to imgur (Default is 0).
+* `local_directory` Local directory where files will be stored (e.g. your public_html folder).
+* `offline` Create local spectrograms (saved in `local_directory`), don't upload to imgur (Default is 0).
 * `optipng` Use optipng on the spectrogram images to save space and avoid imgur compressing them to jpg (Default is 1).
 * `text_only` Output [url][/url] tags with the filename as the clickable link to the spectrogram (Default is 1). The alternative is to output [img][/img] tags to embed the images.
-* `urlformat` URL that directs to the directory set in `localdir`.
+* `urlformat` URL that directs to the directory set in `local_directory`.
 
 # Options
 ```

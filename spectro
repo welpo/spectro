@@ -10,7 +10,7 @@ hash sox 2>/dev/null || { printf '%s\n' >&2 "This script requires SoX but it's n
 ############################# BEGIN CONFIGURATION #############################
 
 # Imgur API key. Read about it and register one here: https://api.imgur.com/oauth2
-apikey=f6c67fcc0af0264
+api_key=f6c67fcc0af0264
 
 # Set sha_check=1 if you wish to add SHA info to the output (uses shasum)
 # Can be reversed with the -s, --sha flag
@@ -35,11 +35,11 @@ text_only=1
 
 # Local directory where files will be stored (should be inside your public_html folder) when using -l, --local:
 # Do NOT use a trailing slash
-localdir="$HOME"/www/$(whoami).$(hostname -f)/public_html/spectro
+local_directory="$HOME"/www/$(whoami).$(hostname -f)/public_html/spectro
 
 # URL format (example: http://yoursite.com/spectro) for the -l, --local flag
 # Do NOT use a trailing slash
-urlformat=https://$(hostname -f)/$(whoami)/spectro
+url_format=https://$(hostname -f)/$(whoami)/spectro
 
 ############################## END CONFIGURATION ##############################
 
@@ -184,7 +184,7 @@ if [[ "$offline" != "1" ]]; then
 fi
 
 if [[ "$offline" == "1" ]]; then
-  mkdir -p "$localdir"
+  mkdir -p "$local_directory"
 fi
 
 # Check there's at least one argument
@@ -210,8 +210,8 @@ create_spectrogram () {
   if [[ "$offline" == "1" ]]; then
     # Spectrogram name: Replace invalid characters for underscore, add "zoom" and append "spectro.png"
     output_name=$(printf '%s\n' "$file_basename" | tr ";, " "_")_spectro${zoom_filename}.png
-    output_name="$localdir"/"$output_name"
-    url="$urlformat"/"${output_name##*/}"
+    output_name="$local_directory"/"$output_name"
+    url="$url_format"/"${output_name##*/}"
   else
     # Use temporary file as output, to avoid changing the last modified date on the directory and allow parallel runs on the same directory
     output_name=$(mktemp)
@@ -241,7 +241,7 @@ create_spectrogram () {
       printf "\rUploading $file_basename$zoom_url_text to imgur..."
     fi
     # Upload to imgur and replace http for https in the output
-    response=$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
+    response=$(curl -H "Authorization: CLIENT-ID $api_key" -F "image=@$output_name" \
       https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )
     sleep 3
     curl_attempt=2
@@ -252,7 +252,7 @@ create_spectrogram () {
       fi
       ((curl_attempt++))
       sleep 2
-      response=$(curl -H "Authorization: CLIENT-ID $apikey" -F "image=@$output_name" \
+      response=$(curl -H "Authorization: CLIENT-ID $api_key" -F "image=@$output_name" \
         https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )
     done
     if [[ "$response" == *"error"* ]]; then
