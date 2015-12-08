@@ -33,6 +33,7 @@ To run `spectro` you will need:
 **Optional dependencies**:
 
 - `ffmpeg` or `avconv` to process ape, WMA, MP4 and AAC files.
+- `ImageMagick` to use the --compare feature (the `convert` tool from the suite is needed to create the .gif)
 - `optipng` to optimise the spectrograms. Necessary more often than not to avoid imgur transcoding the images to `.jpg`: http://optipng.sourceforge.net
 - `shasum` to include the file SHA on the output BBCode output as well as `sox`'s spectrogram title.
 
@@ -49,6 +50,7 @@ You can configure the following options for `spectro` by modifying the first lin
 
 # Options
 ```
+-c, --compare          Create a .gif with the spectrograms of each file (e.g. spectro --compare <file1> <file2> <file3> ...)
 -d, --double           Take both zoomed in and full spectrogram for each file
 -h, --help             Show the help output
 -l, --local            Reverse the setting to output the spectrograms locally

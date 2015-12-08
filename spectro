@@ -47,9 +47,10 @@ show_help () {
   printf '%s\n'
   printf '%s\n' "Usage:"
   printf '%s\n' "    spectro <input1> <input2> ..."
-  printf '%s\n' "Input can be individual files (Ogg, MP3, WAV, AAC, ape, WMA, MP4 or FLAC) and/or a directories."
+  printf '%s\n' "Input can be individual files (Ogg, MP3, WAV, AAC, ape, WMA, MP4 or FLAC) and/or directories."
   printf '%s\n'
   printf '%s\n' "Options:"
+  printf '%s\n' "    -c, --compare   Create a .gif with the spectrograms of each file (requires ImageMagick)"
   printf '%s\n' "    -d, --double    Take both zoomed in and full image for each file"
   printf '%s\n' "    -h, --help      Show this help and exit"
   printf '%s\n' "    -l, --local     Reverse the setting to output the spectrograms locally"
@@ -74,8 +75,18 @@ sox_arguments=("-n remix 1 spectrogram -x 3000 -y 513 -z 120 -w Kaiser")
 # Check arguments/options
 while :; do
   case $1 in
+    -c|--compare)
+      # Check for ImageMagick
+      hash convert 2>/dev/null || { printf '%s\n' >&2 "This script requires ImageMagick's convert but it's not installed. Aborting."; exit 1; }
+      compare=1
+      imagemagick_text=' and ImageMagick'
+      ;;
     -d|--double)
-      sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
+      if [[ "$compare" != "1" ]]; then
+        sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
+      else
+        printf '%s\n' "ERROR: --double and --compare are mutually exclusive (for now)"
+      fi
       ;;
     -h|-\?|--help)   # Call a "show_help" function to display a synopsis, then exit.
       show_help
@@ -107,8 +118,18 @@ while :; do
       # Handle grouped options (eg. spectro -lot file)
       if [[ "${#1}" -ge "3" && ${1:1:1} != "-" ]]; then
         for (( i=1; i<${#1}; i++ )); do
+          if [[ "${1:$i:1}" == "c" ]]; then
+            hash convert 2>/dev/null || { printf '%s\n' >&2 "This script requires ImageMagick's convert but it's not installed. Aborting."; exit 1; }
+            compare=1
+            imagemagick_text=' and ImageMagick'
+            continue
+          fi
           if [[ "${1:$i:1}" == "d" ]]; then
-            sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
+            if [[ "$compare" != "1" ]]; then
+              sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
+            else
+              printf '%s\n' "ERROR: --double and --compare are mutually exclusive (for now)"
+            fi
             continue
           fi
           if [[ "${1:$i:1}" == "l" ]]; then
@@ -187,11 +208,74 @@ if [[ "$offline" == "1" ]]; then
   mkdir -p "$local_directory"
 fi
 
+# Re-set the sox arguments if using --compare to avoid huge GIFs, just uncomment the following lines:
+# if [[ "$compare" == "1" ]]; then
+#   sox_arguments=("-n remix 1 spectrogram -x 2000 -y 342 -z 120 -w Kaiser")
+#   if [[ "${#sox_arguments[@]}" == "2" ]]; then
+#     sox_arguments+=( "-n remix 1 spectrogram -x 250 -y 500 -z 120 -w Kaiser -S 0:25 -d 0:04" )
+#   fi
+# fi
+
 # Check there's at least one argument
-if [ "$#" -lt 1 ]; then
+if [[ "$#" -lt 1 ]]; then
   show_help
   exit 1
 fi
+
+# Check there's at least two arguments if using --compare
+if [[ "$compare" == "1" && "$#" -le 1 ]]; then
+  printf '%s\n' "You need at least two files to use --compare"
+  exit 1
+fi
+
+upload_to_imgur () {
+  if [[ "$quiet" != "1" ]]; then
+    printf "\rUploading $file_basename$zoom_url_text to imgur..."
+  fi
+  # Upload to imgur and replace http for https in the output
+  response=$(curl -H "Authorization: CLIENT-ID $api_key" -F "image=@$output_name" \
+    https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )
+  sleep 3
+  curl_attempt=2
+  # Check for errors so we can retry
+  while [[ "$curl_attempt" -le 3 && "$response" == *"error"* ]]; do
+    if [[ "$quiet" != "1" ]]; then
+      printf "\rSomething went wrong, trying again. Attempt $curl_attempt out of 3"
+    fi
+    ((curl_attempt++))
+    sleep 2
+    response=$(curl -H "Authorization: CLIENT-ID $api_key" -F "image=@$output_name" \
+      https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )
+  done
+  if [[ "$response" == *"error"* ]]; then
+    # Parse the actual error to display it
+    curl_error=$(printf '%s\n' "$response" | sed -E 's/.*<error>(.*)<\/error>.*/\1/')
+    printf "\rCouldn't upload this this image, reason: \"$curl_error\""
+    rm "$output_name"
+    return
+  fi
+  # Get the text between <link> </link> in the xml output
+  url=$(printf '%s\n' "$response" | sed -E 's/.*<link>(.*)<\/link>.*/\1/')
+}
+
+show_output () {
+  # Display URL with [url] tags
+  if [[ "$text_only" == "1" ]]; then
+    if [[ "$quiet" != "1" ]]; then
+      # tput to clear until end of line
+      printf "\r$(tput el)[url=$url]$file_basename$zoom_url_text[/url]\n"
+    else
+      printf '%s\n' "[url=$url]$file_basename$zoom_url_text[/url]"
+    fi
+  else
+    # Display URL with [img] tags
+    if [[ "$quiet" != "1" ]]; then
+      printf "\r$(tput el)[img]$url[/img]\n"
+    else
+      printf '%s\n' "[img]$url[/img]"
+    fi
+  fi
+}
 
 create_spectrogram () {
   # If it's the second time we run sox or -z was used, we want the zoomed version
@@ -232,58 +316,25 @@ create_spectrogram () {
   fi
 
   # Create the spectrogram
-  sox "$file" $sox_arg -c "Created with spectro using SoX$converter_text" -t "$title" -o "$output_name" || return
+  sox "$file" $sox_arg -c "Created with spectro using SoX$imagemagick_text$converter_text" -t "$title" -o "$output_name" || return
   if [[ "$optipng" == "1" ]]; then optipng -quiet "$output_name"; fi
 
+  # If using --compare, store the spectrogram file in the array, add the text, and skip to next file
+  if [[ "$compare" == "1" ]]; then
+    compare_array+=( "$output_name" )
+    convert "$output_name" -strokewidth 2 -pointsize 160 -draw "gravity north fill white stroke black text 0,300 \"$file_basename\"" "$output_name"
+    return
+  fi
+
   # Upload to imgur and grab the URL if it's not in local mode
-  if ! [[ "$offline" == "1" ]]; then
-    if [[ "$quiet" != "1" ]]; then
-      printf "\rUploading $file_basename$zoom_url_text to imgur..."
-    fi
-    # Upload to imgur and replace http for https in the output
-    response=$(curl -H "Authorization: CLIENT-ID $api_key" -F "image=@$output_name" \
-      https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )
-    sleep 3
-    curl_attempt=2
-    # Check for errors so we can retry
-    while [[ "$curl_attempt" -le 3 && "$response" == *"error"* ]]; do
-      if [[ "$quiet" != "1" ]]; then
-        printf "\rSomething went wrong, trying again. Attempt $curl_attempt out of 3"
-      fi
-      ((curl_attempt++))
-      sleep 2
-      response=$(curl -H "Authorization: CLIENT-ID $api_key" -F "image=@$output_name" \
-        https://api.imgur.com/3/image.xml 2>/dev/null | tail -n +2 | sed 's/http:/https:/g' )
-    done
-    if [[ "$response" == *"error"* ]]; then
-      # Parse the actual error to display it
-      curl_error=$(printf '%s\n' "$response" | sed -E 's/.*<error>(.*)<\/error>.*/\1/')
-      printf "\rCouldn't upload this this image, reason: \"$curl_error\""
-      rm "$output_name"
-      return
-    fi
-    # Get the text between <link> </link> in the xml output
-    url=$(printf '%s\n' "$response" | sed -E 's/.*<link>(.*)<\/link>.*/\1/')
+  if [[ "$offline" != "1" ]]; then
+    upload_to_imgur
     # Delete spectrogram image
     rm "$output_name"
   fi
 
-  # Display URL with [url] tags
-  if [[ "$text_only" == "1" ]]; then
-    if [[ "$quiet" != "1" ]]; then
-    # tput to clear until end of line
-      printf "\r$(tput el)[url=$url]$file_basename$zoom_url_text[/url]\n"
-    else
-      printf '%s\n' "[url=$url]$file_basename$zoom_url_text[/url]"
-    fi
-  else
-    # Display URL with [img] tags
-    if [[ "$quiet" != "1" ]]; then
-      printf "\r$(tput el)[img]$url[/img]\n"
-    else
-      printf '%s\n' "[img]$url[/img]"
-    fi
-  fi
+  show_output
+
 }
 
 main (){
@@ -314,21 +365,24 @@ main (){
         return
       fi
     fi
+
     # After we set the converter (or ignore the file, if there's none), create the WAV file
     wav_output=$(mktemp)
-    converter_text=" and $converter"
+    converter_text=" and $converter" && imagemagick_text=', ImageMagick'
     "$converter" -y -v 0 -i "$file" -f wav "$wav_output"
   fi
 
   # Only check hash if set as option. Store it for later use (as sox title & plaintext)
   if [[ "$check_sha" == "1" ]]; then file_sha=$(shasum "$file" | cut -d " " -f 1); fi
 
-  # New line before each file
-  printf '%s\n'
+  # New line before each file, unless in --compare (we will only need one)
+  if [[ "$compare" != "1" ]]; then printf '%s\n'; fi
+
   # Print name
-  if [[ "$text_only" != "1" ]]; then printf '%s\n' "$file_basename"; fi
+  if [[ "$compare" != "1" && "$text_only" != "1" ]]; then printf '%s\n' "$file_basename"; fi
+
   # Show hash below name if using images (not text only)
-  if [[ "$check_sha" == "1" && "$text_only" != "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
+  if [[ "$compare" != "1" && "$check_sha" == "1" && "$text_only" != "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
   sox_counter=0
 
   # If we used a WAV file (used ffmpeg or avconv), set that as $file
@@ -343,7 +397,7 @@ main (){
   done
 
   # Show hash below the URL, for text only/url mode
-  if [[ "$text_only" == "1" && "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
+  if [[ "$compare" != "1" && "$text_only" == "1" && "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
 
   # Remove the WAV files if they were used
   if [[ -n "$wav_output" ]]; then
@@ -351,6 +405,12 @@ main (){
     # Empty the variables before processing the next file
     wav_output=''
     converter_text=''
+    if [[ "$compare" == "1" ]]; then imagemagick_text=' and ImageMagick'; fi
+  fi
+
+  # Store the basename on an array if using --compare, to use that as the output
+  if [[ "$compare" == "1" ]]; then
+    basename_array+=( "$file_basename" )
   fi
 }
 
@@ -370,8 +430,50 @@ for file in "$@"; do
 done
 
 if [[ "$valid_input" != "1" && "$parallel" != "1" ]]; then
-  printf '%s\n' 'Invalid input, no allowed files found (Ogg, MP3, FLAC, AAC, ape, WMA, MP4 or WAV).'
+  printf '%s\n' 'ERROR: Invalid input, no allowed files found (Ogg, MP3, FLAC, AAC, ape, WMA, MP4 or WAV).'
   exit 1
+fi
+
+if [[ "$compare" == "1" ]]; then
+  printf '%s\n'
+
+  if [[ "${#compare_array[@]}" -le 1 ]]; then
+    printf '%s\n' "ERROR: You need at least two files to use --compare."
+    exit 1
+  fi
+
+  # Set a pseudo-random name for the gif
+  gif_name=$(cat /dev/urandom | env LC_CTYPE=C  tr -dc 'a-zA-Z0-9' | head -c 5).gif
+
+  if [[ "$offline" == "1" ]]; then
+    output_name="$local_directory/spectro_comparison_$gif_name"
+    url="$url_format"/"${output_name##*/}"
+  else
+    # If the image uploaded to imgur is not .gif it becomes .png.
+    # Sadly BSD's mktemp doesn't have an option to append text (as a suffix, like '.gif') so this is the second best option
+    gif_directory=$(mktemp -d)
+    output_name="$gif_directory"/"$gif_name"
+  fi
+
+  file_basename="Comparison between ${basename_array[@]}"
+
+  if [[ "$text_only" != "1" ]]; then printf '%s\n' "$file_basename"; fi
+
+  # ImageMagick identifies the input from its extension. Since we are using mktemp we need to specify that PNG is the input.
+  format_array=( "${compare_array[@]/#/png:}" )
+
+  # Call ImageMagick's convert to create the .gif, in a loop, with 2 seconds for each pic
+  convert -delay 200 "${format_array[@]}" -loop 0 "$output_name"
+
+  if [[ "$offline" != "1" ]]; then
+    upload_to_imgur
+  fi
+
+  show_output
+
+  rm "${compare_array[@]}"
+
+  if [[ -n "$gif_directory" ]]; then rm -r "$gif_directory"; fi
 fi
 
 if [[ "$parallel" != "1" ]]; then printf '%s\n' "[/size]$align_out[/hide]"; fi
