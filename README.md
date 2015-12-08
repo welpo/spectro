@@ -32,8 +32,8 @@ To run `spectro` you will need:
 
 **Optional dependencies**:
 
-- `ffmpeg` or `avconv` to process ape, WMA, MP4 and AAC files.
-- `ImageMagick` to use the --compare feature (the `convert` tool from the suite is needed to create the .gif)
+- `ffmpeg` or `avconv` to process ape, WMA, MP4 and AAC files: https://ffmpeg.org/download.html or https://libav.org/download/
+- `ImageMagick` to use the --compare feature (the `convert` tool from the suite is needed to create the .gif): http://imagemagick.org/script/binary-releases.php
 - `optipng` to optimise the spectrograms. Necessary more often than not to avoid imgur transcoding the images to `.jpg`: http://optipng.sourceforge.net
 - `shasum` to include the file SHA on the output BBCode output as well as `sox`'s spectrogram title.
 
@@ -46,7 +46,7 @@ You can configure the following options for `spectro` by modifying the first lin
 * `offline` Create local spectrograms (saved in `local_directory`), don't upload to imgur (Default is 0).
 * `optipng` Use optipng on the spectrogram images to save space and avoid imgur compressing them to jpg (Default is 1).
 * `text_only` Output [url][/url] tags with the filename as the clickable link to the spectrogram (Default is 1). The alternative is to output [img][/img] tags to embed the images.
-* `urlformat` URL that directs to the directory set in `local_directory`.
+* `url_format` URL that directs to the directory set in `local_directory`.
 
 # Options
 ```
