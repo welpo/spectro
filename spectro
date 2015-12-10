@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-trap 'exit' ERR
+set -e
 shopt -s nullglob
 shopt -s extglob
 shopt -s globstar
@@ -99,11 +99,7 @@ while :; do
       imagemagick_text=' and ImageMagick'
       ;;
     -d|--double)
-      if [[ "$compare" != "1" ]]; then
-        sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
-      else
-        printf '%s\n' "ERROR: --double and --compare are mutually exclusive (for now)"
-      fi
+      sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
       ;;
     -h|-\?|--help)   # Call a "show_help" function to display a synopsis, then exit.
       show_help
@@ -142,11 +138,7 @@ while :; do
             continue
           fi
           if [[ "${1:$i:1}" == "d" ]]; then
-            if [[ "$compare" != "1" ]]; then
-              sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
-            else
-              printf '%s\n' "ERROR: --double and --compare are mutually exclusive (for now)"
-            fi
+            sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
             continue
           fi
           if [[ "${1:$i:1}" == "l" ]]; then
@@ -297,6 +289,7 @@ show_output () {
 create_spectrogram () {
   # If it's the second time we run sox or -z was used, we want the zoomed version
   if [[ "$sox_counter" == "2" || "$zoom" == 1 ]]; then
+    is_zoomed=1
     if [[ "$offline" == "1" ]]; then
       # We will append this to the spectrogram filename
       zoom_filename='_zoom'
@@ -308,7 +301,7 @@ create_spectrogram () {
     zoom_url_text=''
   fi
 
-  if [[ "$offline" == "1" ]]; then
+  if [[ "$offline" == "1" && "$compare" != "1" ]]; then
     # Spectrogram name: Replace invalid characters for underscore, add "zoom" and append "spectro.png"
     output_name=$(printf '%s\n' "$file_basename" | tr ";, " "_")_spectro${zoom_filename}.png
     output_name="$local_directory"/"$output_name"
@@ -327,8 +320,9 @@ create_spectrogram () {
 
   # Set title for SoX
   title="$directory/$file_basename"
+
   # Add SHA info if not using zoom (won't fit) and enabled
-  if [[ "$check_sha" == "1" && -z "$zoom_url_text" ]]; then
+  if [[ "$check_sha" == "1" && "$is_zoomed" != "1" ]]; then
     title="$title (SHA $file_sha)"
   fi
 
@@ -338,8 +332,13 @@ create_spectrogram () {
 
   # If using --compare, store the spectrogram file in the array, add the text, and skip to next file
   if [[ "$compare" == "1" ]]; then
-    compare_array+=( "$output_name" )
-    convert "$output_name" -strokewidth 2 -pointsize 160 -draw "gravity north fill white stroke black text 0,300 \"$file_basename\"" "$output_name"
+    if [[ "$sox_counter" == "2" || "$zoom" == 1 ]]; then
+      zoom_array+=( "$output_name" )
+      convert "$output_name" -strokewidth 1 -pointsize 30 -draw "gravity north fill white stroke black text 0,300 \"$file_basename\"" "$output_name"
+    else
+      compare_array+=( "$output_name" )
+      convert "$output_name" -strokewidth 2 -pointsize 120 -draw "gravity north fill white stroke black text 0,300 \"$file_basename\"" "$output_name"
+    fi
     return
   fi
 
@@ -352,6 +351,31 @@ create_spectrogram () {
 
   show_output
 
+}
+
+compare (){
+  # Set a pseudo-random name for the gif
+  gif_name="$(cat /dev/urandom | env LC_CTYPE=C  tr -dc 'a-zA-Z0-9' | head -c 5).gif"
+
+  if [[ "$offline" == "1" ]]; then
+    output_name="$local_directory/spectro_comparison_$gif_name"
+    url="$url_format"/"${output_name##*/}"
+  else
+    # If the image uploaded to imgur is not .gif it becomes .png.
+    # Sadly BSD's mktemp doesn't have an option to append text (as a suffix, like '.gif') so this is the second best option
+    output_name="$gif_directory"/"$gif_name"
+  fi
+
+  if [[ "$text_only" != "1" ]]; then printf '%s\n' "$file_basename"; fi
+
+  # Call ImageMagick's convert to create the .gif, in a loop, with 2 seconds for each pic
+  convert -delay 200 "${format_array[@]}" -loop 0 "$output_name"
+
+  if [[ "$offline" != "1" ]]; then
+    upload_to_imgur
+  fi
+
+  show_output
 }
 
 main (){
@@ -454,41 +478,31 @@ fi
 if [[ "$compare" == "1" ]]; then
   printf '%s\n'
 
-  if [[ "${#compare_array[@]}" -le 1 ]]; then
+  zoom_filename=''
+  zoom_url_text=''
+
+  # This would be unnecessary if BSD's mktemp allowed suffixes
+  if [[ "$offline" != "1" ]]; then
+    gif_directory=$(mktemp -d)
+  fi
+
+  if [[ "${#compare_array[@]}" -ge 2 ]]; then
+    # ImageMagick identifies the input from its extension. Since we are using mktemp we need to specify that PNG is the input.
+    format_array=( "${compare_array[@]/#/png:}" )
+    file_basename="${#format_array[@]} file comparison"
+    compare
+    rm "${compare_array[@]}"
+  else
     printf '%s\n' "ERROR: You need at least two files to use --compare."
     exit 1
   fi
 
-  # Set a pseudo-random name for the gif
-  gif_name=$(cat /dev/urandom | env LC_CTYPE=C  tr -dc 'a-zA-Z0-9' | head -c 5).gif
-
-  if [[ "$offline" == "1" ]]; then
-    output_name="$local_directory/spectro_comparison_$gif_name"
-    url="$url_format"/"${output_name##*/}"
-  else
-    # If the image uploaded to imgur is not .gif it becomes .png.
-    # Sadly BSD's mktemp doesn't have an option to append text (as a suffix, like '.gif') so this is the second best option
-    gif_directory=$(mktemp -d)
-    output_name="$gif_directory"/"$gif_name"
+  if [[ "${#zoom_array[@]}" -ge 2 ]]; then
+    format_array=( "${zoom_array[@]/#/png:}" )
+    file_basename="${#format_array[@]} file comparison (Zoomed)"
+    compare
+    rm "${zoom_array[@]}"
   fi
-
-  file_basename="Comparison between ${basename_array[@]}"
-
-  if [[ "$text_only" != "1" ]]; then printf '%s\n' "$file_basename"; fi
-
-  # ImageMagick identifies the input from its extension. Since we are using mktemp we need to specify that PNG is the input.
-  format_array=( "${compare_array[@]/#/png:}" )
-
-  # Call ImageMagick's convert to create the .gif, in a loop, with 2 seconds for each pic
-  convert -delay 200 "${format_array[@]}" -loop 0 "$output_name"
-
-  if [[ "$offline" != "1" ]]; then
-    upload_to_imgur
-  fi
-
-  show_output
-
-  rm "${compare_array[@]}"
 
   if [[ -n "$gif_directory" ]]; then rm -r "$gif_directory"; fi
 fi
