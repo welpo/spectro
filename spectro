@@ -67,7 +67,7 @@ show_help () {
   printf '%s\n' "Input can be individual files (Ogg, MP3, WAV, AAC, ape, WMA, MP4 or FLAC) and/or directories."
   printf '%s\n'
   printf '%s\n' "Options:"
-  printf '%s\n' "    -a, --animate   Create a .gif with the spectrograms of each file (requires ImageMagick)"
+  printf '%s\n' "    -c, --compare   Create a .gif with the spectrograms of each file (requires ImageMagick)"
   printf '%s\n' "    -d, --double    Take both zoomed in and full image for each file"
   printf '%s\n' "    -h, --help      Show this help and exit"
   printf '%s\n' "    -l, --local     Reverse the setting to output the spectrograms locally"
@@ -92,10 +92,10 @@ sox_arguments=("-n remix 1 spectrogram -x 3000 -y 513 -z 120 -w Kaiser")
 # Check arguments/options
 while :; do
   case $1 in
-    -a|--animate)
+    -c|--compare)
       # Check for ImageMagick
       hash convert 2>/dev/null || { printf '%s\n' >&2 "This script requires ImageMagick's convert but it's not installed. Aborting."; exit 1; }
-      animate=1
+      compare=1
       imagemagick_text=' and ImageMagick'
       ;;
     -d|--double)
@@ -131,9 +131,9 @@ while :; do
       # Handle grouped options (eg. spectro -lot file)
       if [[ "${#1}" -ge "3" && ${1:1:1} != "-" ]]; then
         for (( i=1; i<${#1}; i++ )); do
-          if [[ "${1:$i:1}" == "a" ]]; then
+          if [[ "${1:$i:1}" == "c" ]]; then
             hash convert 2>/dev/null || { printf '%s\n' >&2 "This script requires ImageMagick's convert but it's not installed. Aborting."; exit 1; }
-            animate=1
+            compare=1
             imagemagick_text=' and ImageMagick'
             continue
           fi
@@ -217,8 +217,8 @@ if [[ "$offline" == "1" ]]; then
   mkdir -p "$local_directory"
 fi
 
-# Re-set the sox arguments if using --animate to avoid huge GIFs, just uncomment the following lines:
-# if [[ "$animate" == "1" ]]; then
+# Re-set the sox arguments if using --compare to avoid huge GIFs, just uncomment the following lines:
+# if [[ "$compare" == "1" ]]; then
 #   sox_arguments=("-n remix 1 spectrogram -x 2000 -y 342 -z 120 -w Kaiser")
 #   if [[ "${#sox_arguments[@]}" == "2" ]]; then
 #     sox_arguments+=( "-n remix 1 spectrogram -x 250 -y 500 -z 120 -w Kaiser -S 0:25 -d 0:04" )
@@ -231,9 +231,9 @@ if [[ "$#" -lt 1 ]]; then
   exit 1
 fi
 
-# Check there's at least two arguments if using --animate
-if [[ "$animate" == "1" && "$#" -le 1 ]]; then
-  printf '%s\n' "You need at least two files to use --animate"
+# Check there's at least two arguments if using --compare
+if [[ "$compare" == "1" && "$#" -le 1 ]]; then
+  printf '%s\n' "You need at least two files to use --compare"
   exit 1
 fi
 
@@ -302,7 +302,7 @@ create_spectrogram () {
     zoom_url_text=''
   fi
 
-  if [[ "$offline" == "1" && "$animate" != "1" ]]; then
+  if [[ "$offline" == "1" && "$compare" != "1" ]]; then
     # Spectrogram name: Replace invalid characters for underscore, add "zoom" and append "spectro.png"
     output_name=$(printf '%s\n' "$file_basename" | tr ";, " "_")_spectro${zoom_filename}.png
     output_name="$local_directory"/"$output_name"
@@ -331,13 +331,13 @@ create_spectrogram () {
   sox "$file" $sox_arg -c "Created with spectro using SoX$imagemagick_text$converter_text" -t "$title" -o "$output_name" || return
   if [[ "$optipng" == "1" ]]; then optipng -quiet "$output_name"; fi
 
-  # If using --animate, store the spectrogram file in the array, add the text, and skip to next file
-  if [[ "$animate" == "1" ]]; then
+  # If using --compare, store the spectrogram file in the array, add the text, and skip to next file
+  if [[ "$compare" == "1" ]]; then
     if [[ "$is_zoomed" == "1" ]]; then
       zoom_array+=( "$output_name" )
       convert "$output_name" -strokewidth 1 -pointsize 30 -draw "gravity north fill white stroke black text 0,300 \"$file_basename\"" "$output_name"
     else
-      animate_array+=( "$output_name" )
+      compare_array+=( "$output_name" )
       convert "$output_name" -strokewidth 2 -pointsize 120 -draw "gravity north fill white stroke black text 0,300 \"$file_basename\"" "$output_name"
     fi
     return
@@ -354,7 +354,7 @@ create_spectrogram () {
 
 }
 
-animate (){
+compare (){
   # Set a pseudo-random name for the gif
   gif_name="$(cat /dev/urandom | env LC_CTYPE=C  tr -dc 'a-zA-Z0-9' | head -c 5).gif"
 
@@ -417,14 +417,14 @@ main (){
   # Only check hash if set as option. Store it for later use (as sox title & plaintext)
   if [[ "$check_sha" == "1" ]]; then file_sha=$(shasum "$file" | cut -d " " -f 1); fi
 
-  # New line before each file, unless in --animate (we will only need one)
-  if [[ "$animate" != "1" ]]; then printf '%s\n'; fi
+  # New line before each file, unless in --compare (we will only need one)
+  if [[ "$compare" != "1" ]]; then printf '%s\n'; fi
 
   # Print name
-  if [[ "$animate" != "1" && "$text_only" != "1" ]]; then printf '%s\n' "$file_basename"; fi
+  if [[ "$compare" != "1" && "$text_only" != "1" ]]; then printf '%s\n' "$file_basename"; fi
 
   # Show hash below name if using images (not text only)
-  if [[ "$animate" != "1" && "$check_sha" == "1" && "$text_only" != "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
+  if [[ "$compare" != "1" && "$check_sha" == "1" && "$text_only" != "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
   sox_counter=0
 
   # If we used a WAV file (used ffmpeg or avconv), set that as $file
@@ -439,7 +439,7 @@ main (){
   done
 
   # Show hash below the URL, for text only/url mode
-  if [[ "$animate" != "1" && "$text_only" == "1" && "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
+  if [[ "$compare" != "1" && "$text_only" == "1" && "$check_sha" == "1" ]]; then printf '%s\n' "[size=1]SHA: $file_sha[/size]"; fi
 
   # Remove the WAV files if they were used
   if [[ -n "$wav_output" ]]; then
@@ -447,11 +447,11 @@ main (){
     # Empty the variables before processing the next file
     wav_output=''
     converter_text=''
-    if [[ "$animate" == "1" ]]; then imagemagick_text=' and ImageMagick'; fi
+    if [[ "$compare" == "1" ]]; then imagemagick_text=' and ImageMagick'; fi
   fi
 
-  # Store the basename on an array if using --animate, to use that as the output
-  if [[ "$animate" == "1" ]]; then
+  # Store the basename on an array if using --compare, to use that as the output
+  if [[ "$compare" == "1" ]]; then
     basename_array+=( "$file_basename" )
   fi
 }
@@ -476,7 +476,7 @@ if [[ "$valid_input" != "1" && "$parallel" != "1" ]]; then
   exit 1
 fi
 
-if [[ "$animate" == "1" ]]; then
+if [[ "$compare" == "1" ]]; then
   printf '%s\n'
 
   zoom_filename=''
@@ -487,21 +487,21 @@ if [[ "$animate" == "1" ]]; then
     gif_directory=$(mktemp -d)
   fi
 
-  if [[ "${#animate_array[@]}" -ge 2 ]]; then
+  if [[ "${#compare_array[@]}" -ge 2 ]]; then
     # ImageMagick identifies the input from its extension. Since we are using mktemp we need to specify that PNG is the input.
-    format_array=( "${animate_array[@]/#/png:}" )
+    format_array=( "${compare_array[@]/#/png:}" )
     file_basename="${#format_array[@]} file comparison"
-    animate
-    rm "${animate_array[@]}"
+    compare
+    rm "${compare_array[@]}"
   else
-    printf '%s\n' "ERROR: You need at least two files to use --animate."
+    printf '%s\n' "ERROR: You need at least two files to use --compare."
     exit 1
   fi
 
   if [[ "${#zoom_array[@]}" -ge 2 ]]; then
     format_array=( "${zoom_array[@]/#/png:}" )
     file_basename="${#format_array[@]} file comparison (Zoomed)"
-    animate
+    compare
     rm "${zoom_array[@]}"
   fi
 
