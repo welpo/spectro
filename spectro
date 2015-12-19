@@ -131,47 +131,52 @@ while :; do
       # Handle grouped options (eg. spectro -lot file)
       if [[ "${#1}" -ge "3" && ${1:1:1} != "-" ]]; then
         for (( i=1; i<${#1}; i++ )); do
-          if [[ "${1:$i:1}" == "c" ]]; then
-            hash convert 2>/dev/null || { printf '%s\n' >&2 "This script requires ImageMagick's convert but it's not installed. Aborting."; exit 1; }
-            compare=1
-            imagemagick_text=' and ImageMagick'
-            continue
-          fi
-          if [[ "${1:$i:1}" == "d" ]]; then
-            sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
-            continue
-          fi
-          if [[ "${1:$i:1}" == "l" ]]; then
-            offline=$((!offline))
-            continue
-          fi
-          if [[ "${1:$i:1}" == "o" ]]; then
-            optipng=$((!optipng))
-            continue
-          fi
-          if [[ "${1:$i:1}" == "p" ]]; then
-            parallel=1
-            continue
-          fi
-          if [[ "${1:$i:1}" == "q" ]]; then
-            quiet=1
-            continue
-          fi
-          if [[ "${1:$i:1}" == "s" ]]; then
-            check_sha=$((!check_sha))
-            continue
-          fi
-          if [[ "${1:$i:1}" == "t" ]]; then
-            text_only=$((!text_only))
-            continue
-          fi
-          if [[ "${1:$i:1}" == "z" ]]; then
-            sox_arguments=("-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04")
-            zoom=1
-            continue
-          fi
-          ignored_options="$ignored_options""${1:$i:1}"
-          continue
+          case "${1:$i:1}" in
+            c)
+              hash convert 2>/dev/null || { printf '%s\n' >&2 "This script requires ImageMagick's convert but it's not installed. Aborting."; exit 1; }
+              compare=1
+              imagemagick_text=' and ImageMagick'
+              continue
+              ;;
+            d)
+              sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
+              continue
+              ;;
+            l)
+              offline=$((!offline))
+              continue
+              ;;
+            o)
+              optipng=$((!optipng))
+              continue
+              ;;
+            p)
+              parallel=1
+              continue
+              ;;
+            q)
+              quiet=1
+              continue
+              ;;
+            s)
+              check_sha=$((!check_sha))
+              continue
+              ;;
+            t)
+              text_only=$((!text_only))
+              continue
+              ;;
+            z)
+              sox_arguments=("-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04")
+              zoom=1
+              continue
+              ;;
+            ?*)
+              ignored_options="$ignored_options""${1:$i:1}"
+              ;;
+            *)
+              break
+          esac
         done
         if [[ -n "$ignored_options" ]]; then
           printf 'WARNING: Unknown options (ignored): %s\n' "$ignored_options" >&2
