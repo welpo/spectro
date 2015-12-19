@@ -136,40 +136,31 @@ while :; do
               hash convert 2>/dev/null || { printf '%s\n' >&2 "This script requires ImageMagick's convert but it's not installed. Aborting."; exit 1; }
               compare=1
               imagemagick_text=' and ImageMagick'
-              continue
               ;;
             d)
               sox_arguments+=( "-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04" )
-              continue
               ;;
             l)
               offline=$((!offline))
-              continue
               ;;
             o)
               optipng=$((!optipng))
-              continue
               ;;
             p)
               parallel=1
-              continue
               ;;
             q)
               quiet=1
-              continue
               ;;
             s)
               check_sha=$((!check_sha))
-              continue
               ;;
             t)
               text_only=$((!text_only))
-              continue
               ;;
             z)
               sox_arguments=("-n remix 1 spectrogram -x 500 -y 1025 -z 120 -w Kaiser -S 0:25 -d 0:04")
               zoom=1
-              continue
               ;;
             ?*)
               ignored_options="$ignored_options""${1:$i:1}"
